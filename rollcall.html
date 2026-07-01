@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>随机点名</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f0f4f8; min-height: 100vh; color: #2d3748;
+        }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .navbar { background: #ffffff; box-shadow: 0 2px 12px rgba(0,0,0,0.06); position: sticky; top: 0; z-index: 100; margin-bottom: 24px; }
+        .navbar-inner { max-width: 1100px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 64px; }
+        .logo { display: flex; align-items: center; gap: 10px; font-size: 1.25rem; font-weight: 800; color: #1a365d; text-decoration: none; }
+        .logo-icon { font-size: 1.6rem; }
+        .nav-links { display: flex; gap: 28px; }
+        .nav-link { color: #718096; text-decoration: none; font-size: 0.95rem; font-weight: 500; transition: color 0.3s; position: relative; }
+        .nav-link:hover, .nav-link.active { color: #4299e1; }
+        .nav-link.active::after { content: ''; position: absolute; bottom: -20px; left: 0; right: 0; height: 3px; background: #4299e1; border-radius: 2px 2px 0 0; }
+        @media (max-width: 768px) { .nav-links { gap: 16px; font-size: 0.85rem; } .nav-link.active::after { bottom: -16px; } }
+
+        .main-content { padding: 0 24px 40px; }
+        .main-grid { display: grid; grid-template-columns: 340px 1fr; gap: 24px; }
+        @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+
+        .card { background: #ffffff; border-radius: 20px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid rgba(0,0,0,0.04); }
+        .card-title { font-size: 1.15rem; font-weight: 700; color: #2d3748; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0; }
+        .card-title .icon { font-size: 1.4rem; }
+
+        .input-group { display: flex; gap: 10px; margin-bottom: 14px; }
+        input[type="text"] { flex: 1; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 12px; background: #ffffff; color: #2d3748; font-size: 0.95rem; outline: none; transition: all 0.3s; }
+        input[type="text"]:focus { border-color: #4299e1; box-shadow: 0 0 0 4px rgba(66,153,225,0.15); }
+        input::placeholder { color: #a0aec0; }
+
+        .btn { padding: 12px 20px; border: none; border-radius: 12px; font-size: 0.9rem; cursor: pointer; transition: all 0.3s; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .btn:active { transform: translateY(0); }
+        .btn-blue { background: #4299e1; color: white; }
+        .btn-blue:hover { background: #3182ce; }
+        .btn-red { background: #fc8181; color: white; }
+        .btn-red:hover { background: #f56565; }
+        .btn-green { background: #48bb78; color: white; }
+        .btn-green:hover { background: #38a169; }
+        .btn-orange { background: #ed8936; color: white; }
+        .btn-orange:hover { background: #dd6b20; }
+        .btn-purple { background: #9f7aea; color: white; }
+        .btn-purple:hover { background: #805ad5; }
+        .btn-gray { background: #a0aec0; color: white; }
+        .btn-gray:hover { background: #718096; }
+        .btn-lg { padding: 16px 32px; font-size: 1.15rem; font-weight: 700; width: 100%; border-radius: 16px; }
+        .btn-group { display: flex; gap: 10px; margin-bottom: 14px; }
+
+        .list-container { background: #f7fafc; border-radius: 14px; max-height: 260px; overflow-y: auto; margin-bottom: 14px; border: 1px solid #e2e8f0; }
+        .list-container::-webkit-scrollbar { width: 6px; }
+        .list-container::-webkit-scrollbar-track { background: transparent; }
+        .list-container::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 3px; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #edf2f7; transition: background 0.2s; }
+        .list-item:hover { background: #edf2f7; }
+        .list-item:last-child { border-bottom: none; }
+        .list-item-name { font-size: 0.95rem; color: #2d3748; font-weight: 500; }
+        .list-item-name.called { color: #a0aec0; text-decoration: line-through; }
+        .list-item-delete { color: #fc8181; cursor: pointer; font-size: 0.9rem; opacity: 0.5; transition: all 0.2s; padding: 2px 6px; border-radius: 6px; }
+        .list-item-delete:hover { opacity: 1; background: #fff5f5; }
+        .empty-state { color: #a0aec0; text-align: center; padding: 30px; font-size: 0.95rem; }
+
+        .call-stage { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; }
+        .call-display { font-size: 3.5rem; font-weight: 800; color: #4299e1; background: linear-gradient(135deg, #ebf8ff, #e6fffa); width: 200px; height: 200px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 30px rgba(66,153,225,0.3); margin-bottom: 24px; transition: all 0.3s; text-align: center; padding: 10px; word-break: break-word; border: 4px solid #bee3f8; }
+        .call-display.rolling { animation: callShake 0.12s infinite; background: linear-gradient(135deg, #fffaf0, #fef3c7); color: #c05621; border-color: #f6ad55; }
+        @keyframes callShake { 0%,100% { transform: translateX(0) scale(1); } 25% { transform: translateX(-5px) scale(1.03); } 75% { transform: translateX(5px) scale(1.03); } }
+        .call-result { font-size: 2rem; font-weight: 800; color: #4299e1; text-align: center; margin-top: 16px; }
+        .call-progress { font-size: 0.95rem; color: #718096; margin-top: 8px; text-align: center; }
+        .call-history { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 16px; }
+        .call-history-tag { background: #edf2f7; color: #4a5568; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; }
+
+        .progress-bar { width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; margin-top: 12px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #4299e1, #48bb78); border-radius: 4px; transition: width 0.5s; }
+
+        #fileInput { display: none; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-inner">
+            <a href="index.html" class="logo"><span class="logo-icon">🧰</span><span>工具箱</span></a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">首页</a>
+                <a href="lottery.html" class="nav-link">抽奖</a>
+                <a href="wheel.html" class="nav-link">转盘</a>
+                <a href="grouping.html" class="nav-link">分组</a>
+                <a href="draw.html" class="nav-link">抽签</a>
+                <a href="rollcall.html" class="nav-link active">点名</a>
+                <a href="dice.html" class="nav-link">骰子</a>
+                <a href="calculator.html" class="nav-link">计算</a>
+
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <div class="container">
+            <div class="main-grid">
+                <div class="card">
+                    <div class="card-title"><span class="icon">📢</span>人员名单</div>
+                    <div class="input-group">
+                        <input type="text" id="nameInput" placeholder="输入姓名，按回车添加" onkeypress="if(event.key==='Enter') addName()">
+                        <button class="btn btn-green" onclick="addName()">添加</button>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-blue" onclick="document.getElementById('fileInput').click()">📁 导入</button>
+                        <input type="file" id="fileInput" accept=".txt" onchange="importNames(event)">
+                        <button class="btn btn-red" onclick="clearNames()">清空</button>
+                    </div>
+                    <div class="list-container" id="nameList">
+                        <div class="empty-state" id="nameEmpty">暂无人员，请添加</div>
+                    </div>
+                    <div class="progress-bar"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><span class="icon">📢</span>随机点名</div>
+                    <div class="call-stage">
+                        <div class="call-display" id="callDisplay">?</div>
+                        <button class="btn btn-orange btn-lg" id="callBtn" onclick="doCall()">📢 开始点名</button>
+                        <button class="btn btn-gray" style="margin-top: 10px; width: 100%;" onclick="resetCall()">🔄 重置点名</button>
+                        <div class="call-result" id="callResult"></div>
+                        <div class="call-progress" id="callProgress"></div>
+                        <div class="call-history" id="callHistory"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let names = [];
+        let called = [];
+        let isCalling = false;
+
+        function loadData() {
+            const saved = localStorage.getItem('rollcallData');
+            if (saved) { const data = JSON.parse(saved); names = data.names || []; called = data.called || []; renderNames(); updateProgress(); }
+        }
+        function saveData() { localStorage.setItem('rollcallData', JSON.stringify({ names: names, called: called })); }
+
+        function renderNames() {
+            const list = document.getElementById('nameList'); const empty = document.getElementById('nameEmpty');
+            if (names.length === 0) { list.innerHTML = ''; list.appendChild(empty); empty.style.display = 'block'; return; }
+            list.innerHTML = '';
+            names.forEach((n, i) => {
+                const item = document.createElement('div'); item.className = 'list-item';
+                const isCalled = called.includes(i);
+                item.innerHTML = `<span class="list-item-name${isCalled ? ' called' : ''}">${isCalled ? '✓ ' : ''}${escapeHtml(n)}</span><span class="list-item-delete" onclick="removeName(${i})">✕</span>`;
+                list.appendChild(item);
+            });
+            updateProgress();
+        }
+
+        function addName() {
+            const input = document.getElementById('nameInput'); const name = input.value.trim();
+            if (!name) { alert('请输入姓名！'); return; }
+            if (names.includes(name)) { alert(`'${name}' 已存在！`); return; }
+            names.push(name); input.value = ''; renderNames(); saveData();
+        }
+        function removeName(i) {
+            names.splice(i, 1); called = called.filter(c => c !== i).map(c => c > i ? c - 1 : c);
+            renderNames(); saveData();
+        }
+        function clearNames() { if (!names.length) return; if (!confirm('确定清空所有人？')) return; names = []; called = []; renderNames(); saveData(); resetCall(); }
+
+        function updateProgress() {
+            const pct = names.length ? (called.length / names.length) * 100 : 0;
+            document.getElementById('progressFill').style.width = pct + '%';
+            document.getElementById('callProgress').textContent = names.length ? `已点名 ${called.length} / ${names.length} 人` : '';
+        }
+
+        function doCall() {
+            if (isCalling) return; if (names.length < 2) { alert('请至少添加2个人！'); return; }
+            const available = names.map((_, i) => i).filter(i => !called.includes(i));
+            if (available.length === 0) { alert('所有人都已被点过！请重置。'); return; }
+
+            isCalling = true; const btn = document.getElementById('callBtn'); const display = document.getElementById('callDisplay'); const result = document.getElementById('callResult');
+            btn.disabled = true; btn.textContent = '⏳ 点名中...'; display.classList.add('rolling'); result.textContent = '';
+
+            let count = 0; const interval = setInterval(() => {
+                display.textContent = names[available[Math.floor(Math.random() * available.length)]];
+                count++; if (count > 30) { clearInterval(interval); finishCall(available); }
+            }, 70);
+        }
+
+        function finishCall(available) {
+            const display = document.getElementById('callDisplay'); const btn = document.getElementById('callBtn'); const result = document.getElementById('callResult');
+            const winner = available[Math.floor(Math.random() * available.length)]; called.push(winner);
+            display.textContent = names[winner]; display.classList.remove('rolling');
+            btn.disabled = false; btn.textContent = '📢 继续点名'; isCalling = false;
+            result.textContent = `🎉 ${escapeHtml(names[winner])}`; renderNames(); saveData(); updateHistory();
+        }
+
+        function updateHistory() {
+            const hist = document.getElementById('callHistory');
+            hist.innerHTML = called.map(i => `<span class="call-history-tag">${escapeHtml(names[i])}</span>`).join('');
+        }
+
+        function resetCall() { called = []; renderNames(); saveData(); document.getElementById('callDisplay').textContent = '?'; document.getElementById('callResult').textContent = ''; document.getElementById('callHistory').innerHTML = ''; document.getElementById('callBtn').textContent = '📢 开始点名'; updateProgress(); }
+
+        function importNames(event) {
+            const file = event.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const lines = e.target.result.split('\n').map(l => l.trim()).filter(l => l);
+                let added = 0; lines.forEach(n => { if (!names.includes(n)) { names.push(n); added++; } });
+                renderNames(); saveData(); alert(`成功导入 ${added} 人！`);
+            };
+            reader.readAsText(file); event.target.value = '';
+        }
+
+        function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+
+        loadData(); updateHistory();
+    </script>
+</body>
+</html>

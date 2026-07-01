@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>掷骰子</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f0f4f8; min-height: 100vh; color: #2d3748;
+        }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .navbar { background: #ffffff; box-shadow: 0 2px 12px rgba(0,0,0,0.06); position: sticky; top: 0; z-index: 100; margin-bottom: 24px; }
+        .navbar-inner { max-width: 1100px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 64px; }
+        .logo { display: flex; align-items: center; gap: 10px; font-size: 1.25rem; font-weight: 800; color: #1a365d; text-decoration: none; }
+        .logo-icon { font-size: 1.6rem; }
+        .nav-links { display: flex; gap: 28px; }
+        .nav-link { color: #718096; text-decoration: none; font-size: 0.95rem; font-weight: 500; transition: color 0.3s; position: relative; }
+        .nav-link:hover, .nav-link.active { color: #4299e1; }
+        .nav-link.active::after { content: ''; position: absolute; bottom: -20px; left: 0; right: 0; height: 3px; background: #4299e1; border-radius: 2px 2px 0 0; }
+        @media (max-width: 768px) { .nav-links { gap: 16px; font-size: 0.85rem; } .nav-link.active::after { bottom: -16px; } }
+
+        .main-content { padding: 0 24px 40px; }
+        .main-grid { display: grid; grid-template-columns: 320px 1fr; gap: 24px; }
+        @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } }
+
+        .card { background: #ffffff; border-radius: 20px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid rgba(0,0,0,0.04); }
+        .card-title { font-size: 1.15rem; font-weight: 700; color: #2d3748; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0; }
+        .card-title .icon { font-size: 1.4rem; }
+
+        .setting-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding: 12px 0; border-bottom: 1px solid #edf2f7; }
+        .setting-row:last-child { border-bottom: none; }
+        .setting-label { font-size: 0.95rem; font-weight: 600; color: #4a5568; }
+        .setting-control { display: flex; align-items: center; gap: 10px; }
+        input[type="number"] { width: 70px; padding: 10px 12px; border: 2px solid #e2e8f0; border-radius: 10px; background: #ffffff; color: #2d3748; font-size: 0.95rem; outline: none; text-align: center; transition: all 0.3s; }
+        input[type="number"]:focus { border-color: #4299e1; box-shadow: 0 0 0 4px rgba(66,153,225,0.15); }
+        .step-btn { width: 36px; height: 36px; border-radius: 10px; border: 2px solid #e2e8f0; background: #ffffff; color: #4a5568; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .step-btn:hover { background: #edf2f7; border-color: #cbd5e0; }
+
+        .btn { padding: 12px 20px; border: none; border-radius: 12px; font-size: 0.9rem; cursor: pointer; transition: all 0.3s; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .btn:active { transform: translateY(0); }
+        .btn-blue { background: #4299e1; color: white; }
+        .btn-blue:hover { background: #3182ce; }
+        .btn-green { background: #48bb78; color: white; }
+        .btn-green:hover { background: #38a169; }
+        .btn-orange { background: #ed8936; color: white; }
+        .btn-orange:hover { background: #dd6b20; }
+        .btn-gray { background: #a0aec0; color: white; }
+        .btn-gray:hover { background: #718096; }
+        .btn-lg { padding: 16px 32px; font-size: 1.15rem; font-weight: 700; width: 100%; border-radius: 16px; }
+
+        .dice-stage { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; }
+        .dice-container { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-bottom: 24px; min-height: 100px; align-items: center; }
+        .dice { width: 80px; height: 80px; background: #ffffff; border-radius: 16px; border: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 800; color: #e53e3e; box-shadow: 0 4px 12px rgba(0,0,0,0.06); transition: all 0.3s; }
+        .dice.rolling { animation: diceRoll 0.2s infinite; }
+        @keyframes diceRoll { 0% { transform: rotate(0deg) scale(1); } 50% { transform: rotate(180deg) scale(1.1); } 100% { transform: rotate(360deg) scale(1); } }
+        .total-display { font-size: 1.5rem; font-weight: 700; color: #2d3748; margin-bottom: 16px; text-align: center; }
+        .total-display span { color: #4299e1; font-size: 2rem; }
+        .history-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 20px; }
+        .history-item { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 14px; font-size: 0.85rem; color: #4a5568; }
+        .history-item b { color: #4299e1; }
+
+        .face-selector { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+        .face-option { padding: 6px 14px; border-radius: 10px; background: #f7fafc; border: 2px solid #e2e8f0; color: #4a5568; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; font-weight: 600; }
+        .face-option:hover { background: #edf2f7; }
+        .face-option.active { background: #4299e1; color: white; border-color: #4299e1; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-inner">
+            <a href="index.html" class="logo"><span class="logo-icon">🧰</span><span>工具箱</span></a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">首页</a>
+                <a href="lottery.html" class="nav-link">抽奖</a>
+                <a href="wheel.html" class="nav-link">转盘</a>
+                <a href="grouping.html" class="nav-link">分组</a>
+                <a href="draw.html" class="nav-link">抽签</a>
+                <a href="rollcall.html" class="nav-link">点名</a>
+                <a href="dice.html" class="nav-link active">骰子</a>
+                <a href="calculator.html" class="nav-link">计算</a>
+
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <div class="container">
+            <div class="main-grid">
+                <div class="card">
+                    <div class="card-title"><span class="icon">⚙️</span>骰子设置</div>
+                    <div class="setting-row">
+                        <span class="setting-label">骰子数量</span>
+                        <div class="setting-control">
+                            <button class="step-btn" onclick="changeDice(-1)">−</button>
+                            <input type="number" id="diceCount" value="2" min="1" max="10" readonly>
+                            <button class="step-btn" onclick="changeDice(1)">+</button>
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label">骰子面数</span>
+                        <div class="face-selector" id="faceSelector">
+                            <button class="face-option" data-face="4" onclick="selectFace(4)">4面</button>
+                            <button class="face-option active" data-face="6" onclick="selectFace(6)">6面</button>
+                            <button class="face-option" data-face="8" onclick="selectFace(8)">8面</button>
+                            <button class="face-option" data-face="10" onclick="selectFace(10)">10面</button>
+                            <button class="face-option" data-face="12" onclick="selectFace(12)">12面</button>
+                            <button class="face-option" data-face="20" onclick="selectFace(20)">20面</button>
+                        </div>
+                    </div>
+                    <button class="btn btn-orange btn-lg" style="margin-top: 10px;" id="rollBtn" onclick="rollDice()">🎲 投掷骰子</button>
+                    <button class="btn btn-gray" style="margin-top: 10px; width: 100%;" onclick="clearHistory()">🗑 清空记录</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-title"><span class="icon">🎲</span>投掷结果</div>
+                    <div class="dice-stage">
+                        <div class="dice-container" id="diceContainer"></div>
+                        <div class="total-display" id="totalDisplay"></div>
+                        <div class="history-row" id="historyRow"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let diceCount = 2;
+        let diceFaces = 6;
+        let isRolling = false;
+        let history = [];
+
+        function loadData() {
+            const saved = localStorage.getItem('diceData');
+            if (saved) {
+                const data = JSON.parse(saved);
+                diceCount = data.diceCount || 2;
+                diceFaces = data.diceFaces || 6;
+                document.getElementById('diceCount').value = diceCount;
+                selectFace(diceFaces, false);
+                history = data.history || [];
+                renderHistory();
+            }
+        }
+        function saveData() { localStorage.setItem('diceData', JSON.stringify({ diceCount: diceCount, diceFaces: diceFaces, history: history })); }
+
+        function changeDice(delta) {
+            diceCount = Math.max(1, Math.min(10, diceCount + delta));
+            document.getElementById('diceCount').value = diceCount;
+            saveData();
+        }
+
+        function selectFace(face, save = true) {
+            diceFaces = face;
+            document.querySelectorAll('.face-option').forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.face) === face);
+            });
+            if (save) saveData();
+        }
+
+        function rollDice() {
+            if (isRolling) return;
+            isRolling = true; const btn = document.getElementById('rollBtn');
+            btn.disabled = true; btn.textContent = '⏳ 投掷中...';
+
+            const container = document.getElementById('diceContainer');
+            container.innerHTML = ''; document.getElementById('totalDisplay').textContent = '';
+            for (let i = 0; i < diceCount; i++) {
+                const dice = document.createElement('div'); dice.className = 'dice rolling'; dice.textContent = '?'; container.appendChild(dice);
+            }
+
+            let rollCount = 0; const interval = setInterval(() => {
+                const diceEls = container.querySelectorAll('.dice');
+                diceEls.forEach(d => d.textContent = Math.floor(Math.random() * diceFaces) + 1);
+                rollCount++; if (rollCount > 15) { clearInterval(interval); finishRoll(); }
+            }, 100);
+        }
+
+        function finishRoll() {
+            const container = document.getElementById('diceContainer'); const diceEls = container.querySelectorAll('.dice');
+            const results = []; diceEls.forEach(d => { d.classList.remove('rolling'); const r = Math.floor(Math.random() * diceFaces) + 1; d.textContent = r; results.push(r); });
+            const total = results.reduce((a, b) => a + b, 0);
+            document.getElementById('totalDisplay').innerHTML = `总点数：<span>${total}</span>`;
+            history.unshift({ count: diceCount, faces: diceFaces, results: results, total: total });
+            if (history.length > 10) history.pop(); renderHistory(); saveData();
+            isRolling = false; document.getElementById('rollBtn').disabled = false; document.getElementById('rollBtn').textContent = '🎲 投掷骰子';
+        }
+
+        function renderHistory() {
+            const row = document.getElementById('historyRow');
+            if (history.length === 0) { row.innerHTML = ''; return; }
+            row.innerHTML = history.map((h, i) => `<span class="history-item">第${history.length - i}次: ${h.results.join('+')} = <b>${h.total}</b></span>`).join('');
+        }
+
+        function clearHistory() { history = []; renderHistory(); saveData(); document.getElementById('diceContainer').innerHTML = ''; document.getElementById('totalDisplay').textContent = ''; }
+
+        loadData();
+    </script>
+</body>
+</html>

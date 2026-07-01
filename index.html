@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工具箱</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f0f4f8; min-height: 100vh; color: #2d3748;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+        .navbar { background: #ffffff; box-shadow: 0 2px 12px rgba(0,0,0,0.06); position: sticky; top: 0; z-index: 100; }
+        .navbar-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 64px; }
+        .logo { display: flex; align-items: center; gap: 10px; font-size: 1.25rem; font-weight: 800; color: #1a365d; text-decoration: none; }
+        .logo-icon { font-size: 1.6rem; }
+        .nav-links { display: flex; gap: 28px; }
+        .nav-link { color: #718096; text-decoration: none; font-size: 0.95rem; font-weight: 500; transition: color 0.3s; position: relative; }
+        .nav-link:hover, .nav-link.active { color: #4299e1; }
+        .nav-link.active::after { content: ''; position: absolute; bottom: -20px; left: 0; right: 0; height: 3px; background: #4299e1; border-radius: 2px 2px 0 0; }
+        .hero { text-align: center; padding: 60px 0 50px; }
+        .hero-icon { font-size: 4.5rem; margin-bottom: 16px; display: inline-block; animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-12px);} }
+        .hero h1 { font-size: 2.6rem; font-weight: 800; color: #1a365d; letter-spacing: -1px; margin-bottom: 12px; }
+        .hero p { font-size: 1.15rem; color: #718096; max-width: 500px; margin: 0 auto; line-height: 1.7; }
+        .section-title { display: flex; align-items: center; gap: 10px; font-size: 1.25rem; font-weight: 700; color: #2d3748; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0; }
+        .section-title .icon { font-size: 1.4rem; }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; padding-bottom: 60px; }
+        .feature-card { background: #ffffff; border-radius: 20px; padding: 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid rgba(0,0,0,0.04); transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); cursor: pointer; text-decoration: none; color: inherit; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; overflow: hidden; }
+        .feature-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #4299e1, #48bb78); transform: scaleX(0); transition: transform 0.35s; border-radius: 20px 20px 0 0; }
+        .feature-card:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(0,0,0,0.12); }
+        .feature-card:hover::before { transform: scaleX(1); }
+        .feature-icon { width: 72px; height: 72px; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 20px; transition: transform 0.35s; }
+        .feature-card:hover .feature-icon { transform: scale(1.1) rotate(-5deg); }
+        .feature-icon.blue { background: #ebf8ff; }
+        .feature-icon.green { background: #e6fffa; }
+        .feature-icon.orange { background: #fffaf0; }
+        .feature-icon.purple { background: #faf5ff; }
+        .feature-icon.red { background: #fff5f5; }
+        .feature-icon.teal { background: #e6fffa; }
+        .feature-icon.gray { background: #f7fafc; }
+        .feature-title { font-size: 1.15rem; font-weight: 700; color: #2d3748; margin-bottom: 8px; }
+        .feature-desc { font-size: 0.9rem; color: #718096; line-height: 1.6; }
+        .feature-tag { display: inline-block; margin-top: 14px; padding: 5px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+        .feature-tag.blue { background: #ebf8ff; color: #3182ce; }
+        .feature-tag.green { background: #e6fffa; color: #38a169; }
+        .feature-tag.orange { background: #fffaf0; color: #c05621; }
+        .feature-tag.purple { background: #faf5ff; color: #805ad5; }
+        .feature-tag.red { background: #fff5f5; color: #c53030; }
+        .feature-tag.teal { background: #e6fffa; color: #2c7a7b; }
+        .feature-tag.gray { background: #edf2f7; color: #4a5568; }
+        .footer { background: #ffffff; border-top: 1px solid #e2e8f0; padding: 30px 0; text-align: center; }
+        .footer p { color: #a0aec0; font-size: 0.85rem; }
+        @media (max-width: 768px) { .hero h1 { font-size: 1.8rem; } .nav-links { gap: 16px; } .nav-link { font-size: 0.85rem; } .nav-link.active::after { bottom: -16px; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-inner">
+            <a href="index.html" class="logo">
+                <span class="logo-icon">🧰</span>
+                <span>工具箱</span>
+            </a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link active">首页</a>
+                <a href="lottery.html" class="nav-link">抽奖</a>
+                <a href="wheel.html" class="nav-link">转盘</a>
+                <a href="grouping.html" class="nav-link">分组</a>
+                <a href="draw.html" class="nav-link">抽签</a>
+                <a href="rollcall.html" class="nav-link">点名</a>
+                <a href="dice.html" class="nav-link">骰子</a>
+                <a href="calculator.html" class="nav-link">计算</a>
+
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-icon">🧰</div>
+            <h1>工具箱</h1>
+            <p>一个简洁好用的在线工具集合，让聚会、活动更有趣味</p>
+        </div>
+    </section>
+
+    <section class="container">
+        <div class="section-title">
+            <span class="icon">🧰</span>
+            全部工具
+        </div>
+        <div class="features-grid">
+            <a href="lottery.html" class="feature-card">
+                <div class="feature-icon blue">🎰</div>
+                <div class="feature-title">幸运抽奖</div>
+                <div class="feature-desc">导入参与者名单，设置多个奖项，一键随机抽取幸运儿</div>
+                <span class="feature-tag blue">热门</span>
+            </a>
+            <a href="wheel.html" class="feature-card">
+                <div class="feature-icon orange">🎯</div>
+                <div class="feature-title">幸运转盘</div>
+                <div class="feature-desc">可视化转盘抽奖，支持自定义选项和权重，聚会氛围拉满</div>
+                <span class="feature-tag orange">热门</span>
+            </a>
+            <a href="grouping.html" class="feature-card">
+                <div class="feature-icon green">👫</div>
+                <div class="feature-title">随机分组</div>
+                <div class="feature-desc">输入人员名单，一键随机分成若干组，团队活动好帮手</div>
+                <span class="feature-tag green">已上线</span>
+            </a>
+            <a href="draw.html" class="feature-card">
+                <div class="feature-icon purple">🎋</div>
+                <div class="feature-title">随机抽签</div>
+                <div class="feature-desc">从多个选项中随机抽取一个，适合决定吃什么、去哪玩</div>
+                <span class="feature-tag purple">已上线</span>
+            </a>
+            <a href="rollcall.html" class="feature-card">
+                <div class="feature-icon red">📢</div>
+                <div class="feature-title">随机点名</div>
+                <div class="feature-desc">课堂或会议随机点名，公平抽取，避免重复</div>
+                <span class="feature-tag red">已上线</span>
+            </a>
+            <a href="dice.html" class="feature-card">
+                <div class="feature-icon teal">🎲</div>
+                <div class="feature-title">掷骰子</div>
+                <div class="feature-desc">在线投掷骰子，支持多个骰子和自定义面数</div>
+                <span class="feature-tag teal">已上线</span>
+            </a>
+            <a href="calculator.html" class="feature-card">
+                <div class="feature-icon gray">🔢</div>
+                <div class="feature-title">计算器</div>
+                <div class="feature-desc">简洁易用的在线计算器，支持加减乘除四则运算</div>
+                <span class="feature-tag gray">已上线</span>
+            </a>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>工具箱 — 让每一次选择都充满惊喜</p>
+        </div>
+    </footer>
+</body>
+</html>
