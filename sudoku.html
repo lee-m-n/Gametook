@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数独 - Neon Arcade</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%239333ea' rx='20' width='100' height='100'/><text y='.9em' font-size='90' x='50%' text-anchor='middle'>🧩</text></svg>">
+  <style>
+    /* Sudoku-specific styles */
+    .sudoku-board {
+      width: 360px;
+      height: 360px;
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      grid-template-rows: repeat(9, 1fr);
+      gap: 1px;
+      background: var(--border-color);
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 30px rgba(147, 51, 234, 0.15);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .sudoku-cell {
+      background: var(--bg-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, box-shadow 0.15s ease;
+      position: relative;
+      color: var(--text-primary);
+    }
+
+    .sudoku-cell:hover {
+      background: var(--bg-card-hover);
+    }
+
+    .sudoku-cell.given {
+      color: var(--purple-400);
+      font-weight: 700;
+      background: rgba(46, 16, 101, 0.3);
+    }
+
+    .sudoku-cell.selected {
+      background: rgba(147, 51, 234, 0.25);
+      box-shadow: inset 0 0 0 2px var(--purple-500);
+    }
+
+    .sudoku-cell.highlight {
+      background: rgba(147, 51, 234, 0.1);
+    }
+
+    .sudoku-cell.same-number {
+      background: rgba(168, 85, 247, 0.2);
+    }
+
+    .sudoku-cell.error {
+      color: var(--danger);
+      background: rgba(239, 68, 68, 0.15);
+    }
+
+    .sudoku-cell.error.selected {
+      box-shadow: inset 0 0 0 2px var(--danger);
+    }
+
+    /* Thick borders for 3x3 boxes */
+    .sudoku-cell:nth-child(3n) { border-right: 2px solid var(--border-color); }
+    .sudoku-cell:nth-child(9n) { border-right: none; }
+    .sudoku-cell:nth-child(n+19):nth-child(-n+27),
+    .sudoku-cell:nth-child(n+46):nth-child(-n+54) { border-bottom: 2px solid var(--border-color); }
+
+    .sudoku-cell.correct-flash {
+      animation: correctFlash 0.4s ease;
+    }
+
+    @keyframes correctFlash {
+      0% { background: rgba(34, 197, 94, 0.4); }
+      100% { background: transparent; }
+    }
+
+    /* Number input panel */
+    .number-panel {
+      display: flex;
+      gap: 6px;
+      margin-top: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .num-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .num-btn:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--purple-500);
+      box-shadow: 0 0 10px rgba(147, 51, 234, 0.2);
+      transform: scale(1.08);
+    }
+
+    .num-btn:active {
+      transform: scale(0.95);
+    }
+
+    .num-btn.erase {
+      width: auto;
+      padding: 0 14px;
+      font-size: 0.85rem;
+      font-family: 'Inter', sans-serif;
+      color: var(--danger);
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .num-btn.erase:hover {
+      border-color: var(--danger);
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+    }
+
+    /* Difficulty selector */
+    .difficulty-selector {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .diff-btn {
+      padding: 8px 20px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      transition: all 0.3s ease;
+    }
+
+    .diff-btn:hover {
+      border-color: var(--purple-500);
+      color: var(--text-primary);
+    }
+
+    .diff-btn.active {
+      background: linear-gradient(135deg, var(--purple-600), var(--purple-500));
+      color: white;
+      border-color: var(--purple-500);
+      box-shadow: 0 0 15px rgba(147, 51, 234, 0.3);
+    }
+
+    /* Timer */
+    .timer-box {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.2rem;
+      color: var(--purple-300);
+      min-width: 80px;
+      text-align: center;
+    }
+
+    /* Controls row */
+    .controls-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .ctrl-btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      transition: all 0.3s ease;
+    }
+
+    .ctrl-btn:hover {
+      border-color: var(--purple-500);
+      color: var(--text-primary);
+      background: var(--bg-card-hover);
+    }
+
+    .ctrl-btn.hint-btn:hover {
+      border-color: var(--warning);
+      color: var(--warning);
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 480px) {
+      .sudoku-board {
+        width: 340px;
+        height: 340px;
+      }
+      .sudoku-cell {
+        font-size: 1.1rem;
+      }
+      .num-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .sudoku-board {
+        width: 300px;
+        height: 300px;
+      }
+      .sudoku-cell {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="particle-canvas"></canvas>
+
+  <div class="page-wrapper">
+    <nav class="navbar">
+      <div class="container">
+        <a href="index.html" class="logo">
+          <div class="logo-icon">🎮</div>
+          <span class="logo-text">NEON ARCADE</span>
+        </a>
+        <a href="index.html" class="nav-back">
+          <span>←</span> 返回大厅
+        </a>
+      </div>
+    </nav>
+
+    <main class="game-page">
+      <div class="game-header">
+        <h1>🧩 数独</h1>
+        <p class="subtitle">填入 1-9，每行每列每宫不重复</p>
+      </div>
+
+      <div class="difficulty-selector">
+        <button class="diff-btn" data-diff="easy" onclick="setDifficulty('easy')">简单</button>
+        <button class="diff-btn active" data-diff="medium" onclick="setDifficulty('medium')">普通</button>
+        <button class="diff-btn" data-diff="hard" onclick="setDifficulty('hard')">困难</button>
+      </div>
+
+      <div class="score-board">
+        <div class="score-box">
+          <div class="score-label">难度</div>
+          <div class="score-value" id="diffLabel">普通</div>
+        </div>
+        <div class="score-box">
+          <div class="score-label">时间</div>
+          <div class="timer-box" id="timer">00:00</div>
+        </div>
+        <div class="score-box">
+          <div class="score-label">剩余</div>
+          <div class="score-value" id="remainCount">81</div>
+        </div>
+      </div>
+
+      <div class="game-board-container">
+        <div class="sudoku-board" id="sudokuBoard"></div>
+      </div>
+
+      <div class="number-panel" id="numberPanel">
+        <div class="num-btn" onclick="inputNumber(1)">1</div>
+        <div class="num-btn" onclick="inputNumber(2)">2</div>
+        <div class="num-btn" onclick="inputNumber(3)">3</div>
+        <div class="num-btn" onclick="inputNumber(4)">4</div>
+        <div class="num-btn" onclick="inputNumber(5)">5</div>
+        <div class="num-btn" onclick="inputNumber(6)">6</div>
+        <div class="num-btn" onclick="inputNumber(7)">7</div>
+        <div class="num-btn" onclick="inputNumber(8)">8</div>
+        <div class="num-btn" onclick="inputNumber(9)">9</div>
+        <div class="num-btn erase" onclick="inputNumber(0)">擦除</div>
+      </div>
+
+      <div class="controls-row">
+        <button class="ctrl-btn" onclick="newGame()">🔄 新游戏</button>
+        <button class="ctrl-btn hint-btn" onclick="getHint()">💡 提示</button>
+        <button class="ctrl-btn" onclick="undoMove()">↩️ 撤销</button>
+        <button class="ctrl-btn" onclick="checkBoard()">✅ 检查</button>
+      </div>
+
+      <div class="controls-hint">
+        点击格子选中，按 <kbd>1</kbd>-<kbd>9</kbd> 填入数字，<kbd>0</kbd> 或 <kbd>Delete</kbd> 擦除，<kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> 移动选中
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        Neon Arcade - 锻炼逻辑思维，享受解谜乐趣
+      </div>
+    </footer>
+  </div>
+
+  <!-- Victory Modal -->
+  <div class="overlay" id="victoryModal">
+    <div class="modal">
+      <h2>🎉 恭喜完成！</h2>
+      <p>你成功解开了这道数独！</p>
+      <div class="modal-score" id="finalTime">00:00</div>
+      <div class="modal-buttons">
+        <button class="btn btn-primary" onclick="newGame()">再来一局</button>
+        <a href="index.html" class="btn btn-secondary">返回大厅</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/particles.js"></script>
+  <script>
+    (function() {
+      const board = document.getElementById('sudokuBoard');
+      const timerEl = document.getElementById('timer');
+      const remainEl = document.getElementById('remainCount');
+      const diffLabel = document.getElementById('diffLabel');
+      const modal = document.getElementById('victoryModal');
+      const finalTimeEl = document.getElementById('finalTime');
+      const diffBtns = document.querySelectorAll('.diff-btn');
+
+      // ======== Sound Manager ========
+      const Sound = {
+        ctx: null,
+        enabled: true,
+        init() {
+          if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+          }
+          if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+          }
+        },
+        play(type) {
+          if (!this.enabled) return;
+          this.init();
+          const t = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          switch (type) {
+            case 'select':
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(880, t);
+              osc.frequency.exponentialRampToValueAtTime(440, t + 0.08);
+              gain.gain.setValueAtTime(0.12, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+              osc.start(t);
+              osc.stop(t + 0.08);
+              break;
+            case 'navigate':
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(660, t);
+              gain.gain.setValueAtTime(0.06, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+              osc.start(t);
+              osc.stop(t + 0.05);
+              break;
+            case 'input':
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(523, t);
+              osc.frequency.setValueAtTime(659, t + 0.05);
+              gain.gain.setValueAtTime(0.12, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+              osc.start(t);
+              osc.stop(t + 0.15);
+              break;
+            case 'erase':
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(400, t);
+              osc.frequency.exponentialRampToValueAtTime(200, t + 0.12);
+              gain.gain.setValueAtTime(0.1, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+              osc.start(t);
+              osc.stop(t + 0.12);
+              break;
+            case 'error':
+              osc.type = 'sawtooth';
+              osc.frequency.setValueAtTime(200, t);
+              osc.frequency.setValueAtTime(150, t + 0.1);
+              gain.gain.setValueAtTime(0.08, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+              osc.start(t);
+              osc.stop(t + 0.25);
+              break;
+            case 'hint':
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(880, t);
+              osc.frequency.setValueAtTime(1100, t + 0.1);
+              osc.frequency.setValueAtTime(1320, t + 0.2);
+              gain.gain.setValueAtTime(0.1, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+              osc.start(t);
+              osc.stop(t + 0.3);
+              break;
+            case 'checkOk':
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(523, t);
+              osc.frequency.setValueAtTime(659, t + 0.08);
+              osc.frequency.setValueAtTime(784, t + 0.16);
+              gain.gain.setValueAtTime(0.1, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+              osc.start(t);
+              osc.stop(t + 0.3);
+              break;
+            case 'checkFail':
+              osc.type = 'square';
+              osc.frequency.setValueAtTime(300, t);
+              osc.frequency.setValueAtTime(280, t + 0.1);
+              gain.gain.setValueAtTime(0.08, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+              osc.start(t);
+              osc.stop(t + 0.2);
+              break;
+            case 'undo':
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(440, t);
+              osc.frequency.exponentialRampToValueAtTime(330, t + 0.1);
+              gain.gain.setValueAtTime(0.08, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+              osc.start(t);
+              osc.stop(t + 0.1);
+              break;
+            case 'victory': {
+              const notes = [523, 659, 784, 1047, 784, 1047];
+              notes.forEach((freq, i) => {
+                const o = this.ctx.createOscillator();
+                const g = this.ctx.createGain();
+                o.connect(g);
+                g.connect(this.ctx.destination);
+                o.type = 'sine';
+                const start = t + i * 0.12;
+                o.frequency.setValueAtTime(freq, start);
+                g.gain.setValueAtTime(0.12, start);
+                g.gain.exponentialRampToValueAtTime(0.001, start + 0.2);
+                o.start(start);
+                o.stop(start + 0.2);
+              });
+              break;
+            }
+            case 'newGame':
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(440, t);
+              osc.frequency.setValueAtTime(554, t + 0.08);
+              osc.frequency.setValueAtTime(659, t + 0.16);
+              gain.gain.setValueAtTime(0.08, t);
+              gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+              osc.start(t);
+              osc.stop(t + 0.3);
+              break;
+          }
+        }
+      };
+
+      // ======== Audio Unlock (first interaction) ========
+      function unlockAudio() {
+        Sound.init();
+        document.removeEventListener('click', unlockAudio);
+        document.removeEventListener('keydown', unlockAudio);
+      }
+      document.addEventListener('click', unlockAudio);
+      document.addEventListener('keydown', unlockAudio);
+
+      // Base valid Sudoku (will be randomized)
+      const BASE_SUDOKU = [
+        [5,3,4,6,7,8,9,1,2],
+        [6,7,2,1,9,5,3,4,8],
+        [1,9,8,3,4,2,5,6,7],
+        [8,5,9,7,6,1,4,2,3],
+        [4,2,6,8,5,3,7,9,1],
+        [7,1,3,9,2,4,8,5,6],
+        [9,6,1,5,3,7,2,8,4],
+        [2,8,7,4,1,9,6,3,5],
+        [3,4,5,2,8,6,1,7,9]
+      ];
+
+      // Game state
+      let solution = [];
+      let puzzle = [];       // 0 = empty
+      let player = [];       // 0 = empty, player's current fill
+      let given = [];        // boolean: true if pre-filled
+      let selected = { r: 0, c: 0 };
+      let difficulty = 'medium';
+      let timer = 0;
+      let timerInterval = null;
+      let history = [];
+      let isComplete = false;
+
+      const DIFFICULTY = {
+        easy: { name: '简单', remove: 35 },
+        medium: { name: '普通', remove: 45 },
+        hard: { name: '困难', remove: 55 }
+      };
+
+      // ======== Sudoku Generator ========
+      function shuffleArray(arr) {
+        const a = [...arr];
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [a[i], a[j]] = [a[j], a[i]];
+        }
+        return a;
+      }
+
+      function generateSudoku() {
+        // 1. Copy base
+        let grid = BASE_SUDOKU.map(row => [...row]);
+
+        // 2. Number permutation
+        const perm = shuffleArray([1,2,3,4,5,6,7,8,9]);
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            grid[r][c] = perm[grid[r][c] - 1];
+          }
+        }
+
+        // 3. Row swaps within bands
+        for (let band = 0; band < 3; band++) {
+          const rows = shuffleArray([0,1,2]);
+          const baseRow = band * 3;
+          const newRows = [grid[baseRow + rows[0]], grid[baseRow + rows[1]], grid[baseRow + rows[2]]];
+          for (let i = 0; i < 3; i++) grid[baseRow + i] = newRows[i];
+        }
+
+        // 4. Column swaps within stacks
+        for (let stack = 0; stack < 3; stack++) {
+          const cols = shuffleArray([0,1,2]);
+          const baseCol = stack * 3;
+          for (let r = 0; r < 9; r++) {
+            const row = [...grid[r]];
+            for (let i = 0; i < 3; i++) {
+              grid[r][baseCol + i] = row[baseCol + cols[i]];
+            }
+          }
+        }
+
+        // 5. Swap bands
+        const bandOrder = shuffleArray([0,1,2]);
+        const bands = [];
+        for (let b = 0; b < 3; b++) {
+          bands.push([grid[bandOrder[b]*3], grid[bandOrder[b]*3+1], grid[bandOrder[b]*3+2]]);
+        }
+        for (let b = 0; b < 3; b++) {
+          for (let i = 0; i < 3; i++) grid[b*3 + i] = bands[b][i];
+        }
+
+        // 6. Swap stacks
+        const stackOrder = shuffleArray([0,1,2]);
+        for (let r = 0; r < 9; r++) {
+          const row = [...grid[r]];
+          for (let s = 0; s < 3; s++) {
+            const base = stackOrder[s] * 3;
+            for (let i = 0; i < 3; i++) {
+              grid[r][s*3 + i] = row[base + i];
+            }
+          }
+        }
+
+        solution = grid;
+
+        // Create puzzle by removing numbers
+        puzzle = grid.map(row => [...row]);
+        given = Array(9).fill(null).map(() => Array(9).fill(false));
+        const removeCount = DIFFICULTY[difficulty].remove;
+        const positions = [];
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) positions.push({ r, c });
+        }
+        const shuffled = shuffleArray(positions);
+        for (let i = 0; i < removeCount; i++) {
+          const { r, c } = shuffled[i];
+          puzzle[r][c] = 0;
+        }
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            given[r][c] = puzzle[r][c] !== 0;
+          }
+        }
+
+        player = puzzle.map(row => [...row]);
+      }
+
+      // ======== Rendering ========
+      function render() {
+        board.innerHTML = '';
+        let remain = 0;
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'sudoku-cell';
+            cell.dataset.r = r;
+            cell.dataset.c = c;
+
+            const val = player[r][c];
+            const isGiven = given[r][c];
+            const isSelected = selected.r === r && selected.c === c;
+            const isSameRow = selected.r === r;
+            const isSameCol = selected.c === c;
+            const isSameBox = Math.floor(selected.r/3) === Math.floor(r/3) && Math.floor(selected.c/3) === Math.floor(c/3);
+            const selectedVal = player[selected.r][selected.c];
+
+            if (isGiven) cell.classList.add('given');
+            if (isSelected) cell.classList.add('selected');
+            if (!isSelected && (isSameRow || isSameCol || isSameBox)) cell.classList.add('highlight');
+            if (val !== 0 && val === selectedVal && !isSelected) cell.classList.add('same-number');
+
+            if (val !== 0) {
+              cell.textContent = val;
+              // Check conflict for non-given cells
+              if (!isGiven && hasConflict(r, c, val)) {
+                cell.classList.add('error');
+              }
+            }
+
+            cell.addEventListener('click', () => {
+              selected = { r, c };
+              Sound.play('select');
+              render();
+            });
+
+            board.appendChild(cell);
+            if (val === 0) remain++;
+          }
+        }
+        remainEl.textContent = remain;
+      }
+
+      function hasConflict(r, c, val) {
+        // Check row
+        for (let i = 0; i < 9; i++) {
+          if (i !== c && player[r][i] === val) return true;
+        }
+        // Check col
+        for (let i = 0; i < 9; i++) {
+          if (i !== r && player[i][c] === val) return true;
+        }
+        // Check box
+        const br = Math.floor(r/3) * 3, bc = Math.floor(c/3) * 3;
+        for (let i = 0; i < 3; i++) {
+          for (let j = 0; j < 3; j++) {
+            const rr = br + i, cc = bc + j;
+            if ((rr !== r || cc !== c) && player[rr][cc] === val) return true;
+          }
+        }
+        return false;
+      }
+
+      function countConflicts() {
+        let count = 0;
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            if (player[r][c] !== 0 && !given[r][c] && hasConflict(r, c, player[r][c])) {
+              count++;
+            }
+          }
+        }
+        return count;
+      }
+
+      // ======== Input ========
+      window.inputNumber = function(n) {
+        if (isComplete) return;
+        const { r, c } = selected;
+        if (given[r][c]) { Sound.play('error'); return; }
+        if (player[r][c] === n) return;
+
+        saveState();
+        player[r][c] = n;
+        render();
+        if (n === 0) {
+          Sound.play('erase');
+        } else if (hasConflict(r, c, n)) {
+          Sound.play('error');
+        } else {
+          Sound.play('input');
+        }
+        checkVictory();
+      };
+
+      function saveState() {
+        history.push({
+          player: player.map(row => [...row]),
+          selected: { ...selected }
+        });
+        if (history.length > 50) history.shift();
+      }
+
+      window.undoMove = function() {
+        if (history.length === 0) { Sound.play('error'); return; }
+        Sound.play('undo');
+        const state = history.pop();
+        player = state.player;
+        selected = state.selected;
+        isComplete = false;
+        render();
+      };
+
+      window.getHint = function() {
+        if (isComplete) return;
+        Sound.play('hint');
+        // Find an empty or wrong cell and fill it correctly
+        const wrong = [];
+        const empty = [];
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            if (!given[r][c]) {
+              if (player[r][c] === 0) empty.push({ r, c });
+              else if (player[r][c] !== solution[r][c]) wrong.push({ r, c });
+            }
+          }
+        }
+        const pool = [...wrong, ...empty];
+        if (pool.length === 0) return;
+        const { r, c } = pool[Math.floor(Math.random() * pool.length)];
+        saveState();
+        player[r][c] = solution[r][c];
+        selected = { r, c };
+        render();
+
+        // Flash effect
+        const cells = board.querySelectorAll('.sudoku-cell');
+        const idx = r * 9 + c;
+        cells[idx].classList.add('correct-flash');
+        setTimeout(() => cells[idx].classList.remove('correct-flash'), 400);
+
+        checkVictory();
+      };
+
+      window.checkBoard = function() {
+        const conflicts = countConflicts();
+        if (conflicts === 0) {
+          Sound.play('checkOk');
+          const allFilled = player.every(row => row.every(v => v !== 0));
+          if (allFilled) {
+            showSkillHint('✅ 完美！所有数字都正确！');
+          } else {
+            showSkillHint('✅ 当前没有冲突，继续加油！');
+          }
+        } else {
+          Sound.play('checkFail');
+          showSkillHint(`❌ 发现 ${conflicts} 个冲突，请检查红色标记的数字`);
+        }
+      };
+
+      function checkVictory() {
+        const allFilled = player.every(row => row.every(v => v !== 0));
+        if (!allFilled) return;
+        const conflicts = countConflicts();
+        if (conflicts > 0) return;
+
+        isComplete = true;
+        clearInterval(timerInterval);
+        finalTimeEl.textContent = formatTime(timer);
+        Sound.play('victory');
+        modal.classList.add('active');
+      }
+
+      // ======== Timer ========
+      function startTimer() {
+        clearInterval(timerInterval);
+        timer = 0;
+        timerEl.textContent = '00:00';
+        timerInterval = setInterval(() => {
+          timer++;
+          timerEl.textContent = formatTime(timer);
+        }, 1000);
+      }
+
+      function formatTime(sec) {
+        const m = Math.floor(sec / 60).toString().padStart(2, '0');
+        const s = (sec % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+      }
+
+      // ======== Difficulty ========
+      window.setDifficulty = function(diff) {
+        difficulty = diff;
+        diffLabel.textContent = DIFFICULTY[diff].name;
+        diffBtns.forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.diff === diff);
+        });
+        Sound.play('select');
+        newGame();
+      };
+
+      window.newGame = function() {
+        modal.classList.remove('active');
+        isComplete = false;
+        history = [];
+        generateSudoku();
+        selected = { r: 0, c: 0 };
+        render();
+        Sound.play('newGame');
+        startTimer();
+      };
+
+      function showSkillHint(text) {
+        // Reuse the hint area below controls
+        let hint = document.getElementById('sudokuHint');
+        if (!hint) {
+          hint = document.createElement('div');
+          hint.id = 'sudokuHint';
+          hint.style.cssText = 'color:var(--purple-300);font-size:0.9rem;text-align:center;margin-top:8px;min-height:24px;';
+          document.querySelector('.controls-row').after(hint);
+        }
+        hint.textContent = text;
+        hint.style.animation = 'none';
+        hint.offsetHeight;
+        hint.style.animation = 'fadeIn 0.3s ease';
+        setTimeout(() => { if (hint.textContent === text) hint.textContent = ''; }, 3000);
+      }
+
+      // ======== Keyboard ========
+      document.addEventListener('keydown', (e) => {
+        if (modal.classList.contains('active')) {
+          if (e.code === 'Space' || e.code === 'Enter') newGame();
+          return;
+        }
+
+        const key = e.key;
+
+        // Number input
+        if (key >= '1' && key <= '9') {
+          e.preventDefault();
+          inputNumber(parseInt(key));
+          return;
+        }
+        if (key === '0' || key === 'Delete' || key === 'Backspace') {
+          e.preventDefault();
+          inputNumber(0);
+          return;
+        }
+
+        // Arrow navigation
+        let { r, c } = selected;
+        let moved = false;
+        switch(key) {
+          case 'ArrowUp': r = Math.max(0, r - 1); moved = true; e.preventDefault(); break;
+          case 'ArrowDown': r = Math.min(8, r + 1); moved = true; e.preventDefault(); break;
+          case 'ArrowLeft': c = Math.max(0, c - 1); moved = true; e.preventDefault(); break;
+          case 'ArrowRight': c = Math.min(8, c + 1); moved = true; e.preventDefault(); break;
+          default: return;
+        }
+        selected = { r, c };
+        if (moved) Sound.play('navigate');
+        render();
+      });
+
+      // Start
+      newGame();
+    })();
+  </script>
+</body>
+</html>

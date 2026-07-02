@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>俄罗斯方块 - Neon Arcade</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%239333ea' rx='20' width='100' height='100'/><text y='.9em' font-size='90' x='50%' text-anchor='middle'>🟦</text></svg>">
+  <style>
+    /* Tetris-specific styles */
+    .tetris-wrapper {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .tetris-board-wrap {
+      position: relative;
+    }
+
+    .tetris-canvas {
+      display: block;
+      background: var(--bg-card);
+      border-radius: 12px;
+      border: 2px solid var(--border-color);
+      box-shadow: 0 0 30px rgba(147, 51, 234, 0.1);
+    }
+
+    .tetris-info {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 140px;
+    }
+
+    .info-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .info-box:hover {
+      border-color: var(--purple-500);
+    }
+
+    .info-label {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    .info-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--purple-300);
+    }
+
+    .next-piece-canvas {
+      display: block;
+      margin: 0 auto;
+      border-radius: 8px;
+    }
+
+    .tetris-controls {
+      display: none;
+      margin-top: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tctrl-btn {
+      width: 64px;
+      height: 52px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: all 0.15s ease;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .tctrl-btn:active {
+      background: var(--purple-900);
+      border-color: var(--purple-500);
+      transform: scale(0.95);
+    }
+
+    .tctrl-btn.wide {
+      width: 100px;
+    }
+
+    .tctrl-row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .tctrl-btn.rotate {
+      border-color: rgba(168, 85, 247, 0.4);
+      color: var(--purple-300);
+    }
+
+    .tctrl-btn.drop {
+      border-color: rgba(34, 197, 94, 0.4);
+      color: var(--success);
+    }
+
+    .tctrl-btn.pause {
+      border-color: rgba(245, 158, 11, 0.4);
+      color: var(--warning);
+    }
+
+    @media (max-width: 600px) {
+      .tetris-wrapper {
+        flex-direction: column;
+        align-items: center;
+      }
+      .tetris-info {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        min-width: auto;
+        width: 100%;
+      }
+      .info-box {
+        min-width: 100px;
+        padding: 12px;
+      }
+      .tetris-controls {
+        display: flex;
+      }
+    }
+
+    @media (max-width: 400px) {
+      .info-box {
+        min-width: 80px;
+        padding: 10px;
+      }
+      .info-value {
+        font-size: 1.1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="particle-canvas"></canvas>
+
+  <div class="page-wrapper">
+    <nav class="navbar">
+      <div class="container">
+        <a href="index.html" class="logo">
+          <div class="logo-icon">🎮</div>
+          <span class="logo-text">NEON ARCADE</span>
+        </a>
+        <a href="index.html" class="nav-back">
+          <span>←</span> 返回大厅
+        </a>
+      </div>
+    </nav>
+
+    <main class="game-page" style="padding-top:24px">
+      <div class="game-header">
+        <h1>🟦 俄罗斯方块</h1>
+        <p class="subtitle">堆叠、旋转、消除行，挑战高分！</p>
+      </div>
+
+      <div class="tetris-wrapper">
+        <div class="tetris-board-wrap">
+          <canvas id="tetrisCanvas" class="tetris-canvas" width="300" height="600"></canvas>
+        </div>
+
+        <div class="tetris-info">
+          <div class="info-box">
+            <div class="info-label">下一个</div>
+            <canvas id="nextCanvas" class="next-piece-canvas" width="100" height="100"></canvas>
+          </div>
+          <div class="info-box">
+            <div class="info-label">得分</div>
+            <div class="info-value" id="score">0</div>
+          </div>
+          <div class="info-box">
+            <div class="info-label">等级</div>
+            <div class="info-value" id="level">1</div>
+          </div>
+          <div class="info-box">
+            <div class="info-label">消除</div>
+            <div class="info-value" id="lines">0</div>
+          </div>
+          <div class="info-box">
+            <div class="info-label">最高分</div>
+            <div class="info-value" id="highScore">0</div>
+          </div>
+          <div class="info-box" id="soundToggle" style="cursor:pointer;user-select:none" title="点击切换音效">
+            <div class="info-label">音效</div>
+            <div class="info-value" id="soundStatus">🔊</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls-hint">
+        <kbd>←</kbd> <kbd>→</kbd> 移动 · <kbd>↑</kbd> 旋转 · <kbd>↓</kbd> 软降 · <kbd>空格</kbd> 硬降 · <kbd>P</kbd> 暂停
+      </div>
+
+      <!-- Mobile controls -->
+      <div class="tetris-controls" id="mobileControls">
+        <div class="tctrl-row">
+          <button class="tctrl-btn rotate" data-action="rotate">↻</button>
+          <button class="tctrl-btn pause" data-action="pause">⏸</button>
+          <button class="tctrl-btn rotate" data-action="rotate-ccw">↺</button>
+        </div>
+        <div class="tctrl-row">
+          <button class="tctrl-btn" data-action="left">←</button>
+          <button class="tctrl-btn drop" data-action="soft">↓</button>
+          <button class="tctrl-btn" data-action="right">→</button>
+        </div>
+        <div class="tctrl-row">
+          <button class="tctrl-btn wide drop" data-action="hard">⬇ 硬降</button>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="container">
+        Neon Arcade - 消除更多行，获得更高分
+      </div>
+    </footer>
+  </div>
+
+  <!-- Game Over / Pause Modal -->
+  <div class="overlay" id="gameModal">
+    <div class="modal">
+      <h2 id="modalTitle">游戏结束</h2>
+      <p id="modalMessage">方块堆到顶部了</p>
+      <div class="modal-score" id="finalScore">0</div>
+      <div class="modal-buttons">
+        <button class="btn btn-primary" onclick="restartGame()">再来一局</button>
+        <a href="index.html" class="btn btn-secondary">返回大厅</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/particles.js"></script>
+  <script>
+    (function() {
+      const canvas = document.getElementById('tetrisCanvas');
+      const ctx = canvas.getContext('2d');
+      const nextCanvas = document.getElementById('nextCanvas');
+      const nextCtx = nextCanvas.getContext('2d');
+      const scoreEl = document.getElementById('score');
+      const levelEl = document.getElementById('level');
+      const linesEl = document.getElementById('lines');
+      const highScoreEl = document.getElementById('highScore');
+      const modal = document.getElementById('gameModal');
+      const modalTitle = document.getElementById('modalTitle');
+      const modalMessage = document.getElementById('modalMessage');
+      const finalScoreEl = document.getElementById('finalScore');
+
+      const COLS = 10;
+      const ROWS = 20;
+      let BLOCK_SIZE = 30;
+      let NEXT_BLOCK_SIZE = 22;
+
+      const COLORS = {
+        I: '#a855f7', O: '#c084fc', T: '#9333ea', S: '#22c55e',
+        Z: '#f59e0b', J: '#3b82f6', L: '#ef4444',
+        ghost: 'rgba(147, 51, 234, 0.12)',
+        grid: '#2e1065'
+      };
+
+      const PIECES = {
+        I: { color: COLORS.I, states: [
+          [[0,0],[1,0],[2,0],[3,0]], [[1,0],[1,1],[1,2],[1,3]],
+          [[0,1],[1,1],[2,1],[3,1]], [[2,0],[2,1],[2,2],[2,3]]
+        ]},
+        O: { color: COLORS.O, states: [
+          [[0,0],[1,0],[0,1],[1,1]]
+        ]},
+        T: { color: COLORS.T, states: [
+          [[1,0],[0,1],[1,1],[2,1]], [[1,0],[1,1],[2,1],[1,2]],
+          [[0,1],[1,1],[2,1],[1,2]], [[0,1],[1,0],[1,1],[1,2]]
+        ]},
+        S: { color: COLORS.S, states: [
+          [[1,0],[2,0],[0,1],[1,1]], [[1,0],[1,1],[2,1],[2,2]],
+          [[1,1],[2,1],[0,2],[1,2]], [[0,0],[0,1],[1,1],[1,2]]
+        ]},
+        Z: { color: COLORS.Z, states: [
+          [[0,0],[1,0],[1,1],[2,1]], [[2,0],[1,1],[2,1],[1,2]],
+          [[0,1],[1,1],[1,2],[2,2]], [[1,0],[0,1],[1,1],[0,2]]
+        ]},
+        J: { color: COLORS.J, states: [
+          [[0,0],[0,1],[1,1],[2,1]], [[1,0],[2,0],[1,1],[1,2]],
+          [[0,1],[1,1],[2,1],[2,2]], [[1,0],[1,1],[0,2],[1,2]]
+        ]},
+        L: { color: COLORS.L, states: [
+          [[2,0],[0,1],[1,1],[2,1]], [[1,0],[1,1],[1,2],[2,2]],
+          [[0,1],[1,1],[2,1],[0,2]], [[0,0],[1,0],[1,1],[1,2]]
+        ]}
+      };
+
+      const PIECE_KEYS = Object.keys(PIECES);
+      const LINE_SCORES = [0, 100, 300, 500, 800];
+
+      // Sound System — generates retro synth sounds via Web Audio API
+      const Sound = {
+        ctx: null,
+        enabled: true,
+        initialized: false,
+        init() {
+          if (this.initialized) return;
+          try {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this.initialized = true;
+          } catch (e) {
+            console.warn('Web Audio API not supported');
+          }
+        },
+        toggle() {
+          this.enabled = !this.enabled;
+          return this.enabled;
+        },
+        play(type) {
+          if (!this.enabled || !this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          switch (type) {
+            case 'move':
+              osc.type = 'square';
+              osc.frequency.setValueAtTime(300, now);
+              gain.gain.setValueAtTime(0.08, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+              osc.start(now);
+              osc.stop(now + 0.04);
+              break;
+            case 'rotate':
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(500, now);
+              gain.gain.setValueAtTime(0.12, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+              osc.start(now);
+              osc.stop(now + 0.05);
+              break;
+            case 'soft':
+              osc.type = 'square';
+              osc.frequency.setValueAtTime(250, now);
+              gain.gain.setValueAtTime(0.06, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+              osc.start(now);
+              osc.stop(now + 0.03);
+              break;
+            case 'hard':
+              osc.type = 'sawtooth';
+              osc.frequency.setValueAtTime(200, now);
+              osc.frequency.exponentialRampToValueAtTime(80, now + 0.12);
+              gain.gain.setValueAtTime(0.15, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+              osc.start(now);
+              osc.stop(now + 0.12);
+              break;
+            case 'lock':
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(180, now);
+              osc.frequency.exponentialRampToValueAtTime(100, now + 0.08);
+              gain.gain.setValueAtTime(0.18, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+              osc.start(now);
+              osc.stop(now + 0.08);
+              break;
+            case 'clear1':
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(400, now);
+              osc.frequency.exponentialRampToValueAtTime(600, now + 0.15);
+              gain.gain.setValueAtTime(0.15, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+              osc.start(now);
+              osc.stop(now + 0.15);
+              break;
+            case 'clear2':
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(350, now);
+              osc.frequency.exponentialRampToValueAtTime(700, now + 0.2);
+              gain.gain.setValueAtTime(0.18, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+              osc.start(now);
+              osc.stop(now + 0.2);
+              break;
+            case 'clear3':
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(300, now);
+              osc.frequency.exponentialRampToValueAtTime(800, now + 0.25);
+              gain.gain.setValueAtTime(0.2, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+              osc.start(now);
+              osc.stop(now + 0.25);
+              break;
+            case 'clear4':
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(280, now);
+              osc.frequency.exponentialRampToValueAtTime(900, now + 0.3);
+              gain.gain.setValueAtTime(0.25, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+              osc.start(now);
+              osc.stop(now + 0.3);
+              const osc2 = this.ctx.createOscillator();
+              const gain2 = this.ctx.createGain();
+              osc2.connect(gain2);
+              gain2.connect(this.ctx.destination);
+              osc2.type = 'sine';
+              osc2.frequency.setValueAtTime(560, now + 0.05);
+              osc2.frequency.exponentialRampToValueAtTime(1200, now + 0.3);
+              gain2.gain.setValueAtTime(0.15, now + 0.05);
+              gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+              osc2.start(now + 0.05);
+              osc2.stop(now + 0.3);
+              break;
+            case 'gameover':
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(350, now);
+              osc.frequency.exponentialRampToValueAtTime(80, now + 0.6);
+              gain.gain.setValueAtTime(0.2, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+              osc.start(now);
+              osc.stop(now + 0.6);
+              break;
+            case 'levelup':
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(400, now);
+              osc.frequency.exponentialRampToValueAtTime(1000, now + 0.35);
+              gain.gain.setValueAtTime(0.2, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+              osc.start(now);
+              osc.stop(now + 0.35);
+              const osc3 = this.ctx.createOscillator();
+              const gain3 = this.ctx.createGain();
+              osc3.connect(gain3);
+              gain3.connect(this.ctx.destination);
+              osc3.type = 'sine';
+              osc3.frequency.setValueAtTime(800, now + 0.1);
+              osc3.frequency.exponentialRampToValueAtTime(1400, now + 0.35);
+              gain3.gain.setValueAtTime(0.12, now + 0.1);
+              gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+              osc3.start(now + 0.1);
+              osc3.stop(now + 0.35);
+              break;
+            case 'pause':
+              osc.type = 'square';
+              osc.frequency.setValueAtTime(300, now);
+              gain.gain.setValueAtTime(0.1, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+              osc.start(now);
+              osc.stop(now + 0.1);
+              break;
+            case 'start':
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(300, now);
+              osc.frequency.exponentialRampToValueAtTime(600, now + 0.25);
+              gain.gain.setValueAtTime(0.15, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+              osc.start(now);
+              osc.stop(now + 0.25);
+              break;
+          }
+        }
+      };
+
+      let board = [];
+      let currentPiece = null;
+      let nextPieceKey = null;
+      let score = 0;
+      let totalLines = 0;
+      let level = 1;
+      let prevLevel = 1;
+      let highScore = parseInt(localStorage.getItem('tetrisHighScore') || '0');
+      let gameOver = false;
+      let paused = false;
+      let dropInterval = 1000;
+      let lastDrop = 0;
+      let lockDelay = 500;
+      let lockTimer = 0;
+      let animating = false;
+      let clearedRows = [];
+      let particles = [];
+
+      highScoreEl.textContent = highScore;
+
+      function resize() {
+        if (window.innerWidth < 500) {
+          BLOCK_SIZE = 24;
+          canvas.width = COLS * BLOCK_SIZE;
+          canvas.height = ROWS * BLOCK_SIZE;
+          nextCanvas.width = 80;
+          nextCanvas.height = 80;
+          NEXT_BLOCK_SIZE = 18;
+        } else if (window.innerWidth < 400) {
+          BLOCK_SIZE = 20;
+          canvas.width = COLS * BLOCK_SIZE;
+          canvas.height = ROWS * BLOCK_SIZE;
+          nextCanvas.width = 70;
+          nextCanvas.height = 70;
+          NEXT_BLOCK_SIZE = 16;
+        } else {
+          BLOCK_SIZE = 30;
+          canvas.width = COLS * BLOCK_SIZE;
+          canvas.height = ROWS * BLOCK_SIZE;
+          nextCanvas.width = 100;
+          nextCanvas.height = 100;
+          NEXT_BLOCK_SIZE = 22;
+        }
+        draw();
+        drawNext();
+      }
+
+      function initBoard() {
+        board = Array(ROWS).fill(null).map(() => Array(COLS).fill(0));
+      }
+
+      function spawnPiece() {
+        const key = nextPieceKey || PIECE_KEYS[Math.floor(Math.random() * PIECE_KEYS.length)];
+        nextPieceKey = PIECE_KEYS[Math.floor(Math.random() * PIECE_KEYS.length)];
+        const def = PIECES[key];
+        currentPiece = {
+          key: key,
+          x: 3,
+          y: 0,
+          state: 0,
+          color: def.color
+        };
+        if (!isValid(currentPiece)) {
+          endGame();
+          return false;
+        }
+        drawNext();
+        return true;
+      }
+
+      function getBlocks(piece) {
+        const def = PIECES[piece.key];
+        const state = def.states[piece.state % def.states.length];
+        return state.map(([x, y]) => ({ x: piece.x + x, y: piece.y + y }));
+      }
+
+      function isValid(piece) {
+        const blocks = getBlocks(piece);
+        for (const b of blocks) {
+          if (b.x < 0 || b.x >= COLS || b.y >= ROWS) return false;
+          if (b.y >= 0 && board[b.y][b.x]) return false;
+        }
+        return true;
+      }
+
+      function lockPiece() {
+        const blocks = getBlocks(currentPiece);
+        for (const b of blocks) {
+          if (b.y >= 0) board[b.y][b.x] = currentPiece.color;
+        }
+        Sound.play('lock');
+        clearLines();
+        if (!gameOver) spawnPiece();
+      }
+
+      function clearLines() {
+        clearedRows = [];
+        for (let r = 0; r < ROWS; r++) {
+          if (board[r].every(c => c !== 0)) {
+            clearedRows.push(r);
+          }
+        }
+        if (clearedRows.length === 0) return;
+
+        Sound.play('clear' + clearedRows.length);
+
+        // Create particles for cleared rows
+        for (const r of clearedRows) {
+          for (let c = 0; c < COLS; c++) {
+            particles.push({
+              x: c * BLOCK_SIZE + BLOCK_SIZE / 2,
+              y: r * BLOCK_SIZE + BLOCK_SIZE / 2,
+              vx: (Math.random() - 0.5) * 6,
+              vy: (Math.random() - 0.5) * 6,
+              life: 1,
+              size: Math.random() * 4 + 2,
+              color: board[r][c]
+            });
+          }
+        }
+
+        animating = true;
+        setTimeout(() => {
+          for (const r of clearedRows.sort((a,b) => b-a)) {
+            board.splice(r, 1);
+            board.unshift(Array(COLS).fill(0));
+          }
+          const lines = clearedRows.length;
+          totalLines += lines;
+          score += LINE_SCORES[lines] * level;
+          const newLevel = Math.floor(totalLines / 10) + 1;
+          if (newLevel > prevLevel) {
+            prevLevel = newLevel;
+            Sound.play('levelup');
+          }
+          level = newLevel;
+          dropInterval = Math.max(100, 1000 - (level - 1) * 80);
+          animating = false;
+          clearedRows = [];
+          updateUI();
+          draw();
+        }, 200);
+      }
+
+      function updateUI() {
+        scoreEl.textContent = score;
+        levelEl.textContent = level;
+        linesEl.textContent = totalLines;
+        if (score > highScore) {
+          highScore = score;
+          highScoreEl.textContent = highScore;
+          localStorage.setItem('tetrisHighScore', highScore);
+        }
+      }
+
+      function endGame() {
+        gameOver = true;
+        finalScoreEl.textContent = score;
+        modalTitle.textContent = '游戏结束';
+        modalMessage.textContent = '方块堆到顶部了';
+        modal.classList.add('active');
+      }
+
+      function togglePause() {
+        if (gameOver) return;
+        paused = !paused;
+        if (paused) {
+          modalTitle.textContent = '已暂停';
+          modalMessage.textContent = '按继续或空格键恢复游戏';
+          finalScoreEl.style.display = 'none';
+          modal.querySelector('.modal-buttons').innerHTML = `
+            <button class="btn btn-primary" onclick="resumeGame()">继续</button>
+            <button class="btn btn-secondary" onclick="restartGame()">重新开始</button>
+          `;
+          modal.classList.add('active');
+        } else {
+          modal.classList.remove('active');
+          finalScoreEl.style.display = '';
+        }
+      }
+
+      window.resumeGame = function() {
+        paused = false;
+        modal.classList.remove('active');
+        finalScoreEl.style.display = '';
+        modal.querySelector('.modal-buttons').innerHTML = `
+          <button class="btn btn-primary" onclick="restartGame()">再来一局</button>
+          <a href="index.html" class="btn btn-secondary">返回大厅</a>
+        `;
+      };
+
+      window.restartGame = function() {
+        modal.classList.remove('active');
+        initGame();
+      };
+
+      function initGame() {
+        initBoard();
+        score = 0;
+        totalLines = 0;
+        level = 1;
+        dropInterval = 1000;
+        gameOver = false;
+        paused = false;
+        animating = false;
+        clearedRows = [];
+        particles = [];
+        nextPieceKey = null;
+        updateUI();
+        spawnPiece();
+        lastDrop = performance.now();
+        lockTimer = 0;
+        draw();
+        requestAnimationFrame(gameLoop);
+      }
+
+      // Input
+      function movePiece(dx, dy) {
+        if (gameOver || paused || animating) return false;
+        const newPiece = { ...currentPiece, x: currentPiece.x + dx, y: currentPiece.y + dy };
+        if (isValid(newPiece)) {
+          currentPiece = newPiece;
+          if (dy > 0) {
+            lockTimer = 0;
+            Sound.play('soft');
+          } else {
+            Sound.play('move');
+          }
+          return true;
+        }
+        return false;
+      }
+
+      function rotatePiece(dir) {
+        if (gameOver || paused || animating) return;
+        const def = PIECES[currentPiece.key];
+        const newState = (currentPiece.state + dir + def.states.length) % def.states.length;
+        const newPiece = { ...currentPiece, state: newState };
+        if (isValid(newPiece)) {
+          currentPiece = newPiece;
+          Sound.play('rotate');
+          return;
+        }
+        // Wall kicks
+        for (const kx of [0, -1, 1, -2, 2]) {
+          for (const ky of [0, -1]) {
+            const kick = { ...newPiece, x: newPiece.x + kx, y: newPiece.y + ky };
+            if (isValid(kick)) {
+              currentPiece = kick;
+              Sound.play('rotate');
+              return;
+            }
+          }
+        }
+      }
+
+      function hardDrop() {
+        if (gameOver || paused || animating) return;
+        let dropScore = 0;
+        while (movePiece(0, 1)) {
+          dropScore += 2;
+        }
+        Sound.play('hard');
+        score += dropScore;
+        updateUI();
+        lockPiece();
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (modal.classList.contains('active') && !paused) return;
+        if (gameOver && (e.code === 'Space' || e.code === 'Enter')) {
+          restartGame();
+          return;
+        }
+        if (e.key === 'p' || e.key === 'P') {
+          togglePause();
+          return;
+        }
+        if (paused || gameOver || animating) return;
+
+        switch(e.key) {
+          case 'ArrowLeft': e.preventDefault(); movePiece(-1, 0); break;
+          case 'ArrowRight': e.preventDefault(); movePiece(1, 0); break;
+          case 'ArrowDown': e.preventDefault(); movePiece(0, 1); score += 1; updateUI(); break;
+          case 'ArrowUp': e.preventDefault(); rotatePiece(1); break;
+          case ' ': e.preventDefault(); hardDrop(); break;
+          case 'z': case 'Z': e.preventDefault(); rotatePiece(-1); break;
+        }
+      });
+
+      // Mobile controls
+      document.querySelectorAll('.tctrl-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const action = btn.dataset.action;
+          switch(action) {
+            case 'left': movePiece(-1, 0); break;
+            case 'right': movePiece(1, 0); break;
+            case 'soft': movePiece(0, 1); score += 1; updateUI(); break;
+            case 'hard': hardDrop(); break;
+            case 'rotate': rotatePiece(1); break;
+            case 'rotate-ccw': rotatePiece(-1); break;
+            case 'pause': togglePause(); break;
+          }
+        });
+      });
+
+      // Drawing
+      function drawBlock(c, x, y, size, color, isGhost) {
+        const px = x * size;
+        const py = y * size;
+        if (isGhost) {
+          c.fillStyle = color;
+          c.fillRect(px + 1, py + 1, size - 2, size - 2);
+          return;
+        }
+        c.fillStyle = color;
+        c.fillRect(px + 1, py + 1, size - 2, size - 2);
+        // Bevel highlight
+        c.fillStyle = 'rgba(255,255,255,0.15)';
+        c.fillRect(px + 1, py + 1, size - 2, 3);
+        c.fillRect(px + 1, py + 1, 3, size - 2);
+        // Bevel shadow
+        c.fillStyle = 'rgba(0,0,0,0.2)';
+        c.fillRect(px + 1, py + size - 4, size - 2, 3);
+        c.fillRect(px + size - 4, py + 1, 3, size - 2);
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Grid lines
+        ctx.strokeStyle = COLORS.grid;
+        ctx.lineWidth = 0.5;
+        for (let x = 0; x <= COLS; x++) {
+          ctx.beginPath();
+          ctx.moveTo(x * BLOCK_SIZE, 0);
+          ctx.lineTo(x * BLOCK_SIZE, canvas.height);
+          ctx.stroke();
+        }
+        for (let y = 0; y <= ROWS; y++) {
+          ctx.beginPath();
+          ctx.moveTo(0, y * BLOCK_SIZE);
+          ctx.lineTo(canvas.width, y * BLOCK_SIZE);
+          ctx.stroke();
+        }
+
+        // Board
+        for (let r = 0; r < ROWS; r++) {
+          for (let c = 0; c < COLS; c++) {
+            if (board[r][c]) {
+              drawBlock(ctx, c, r, BLOCK_SIZE, board[r][c]);
+            }
+          }
+        }
+
+        // Ghost piece
+        if (currentPiece && !gameOver && !paused) {
+          let ghost = { ...currentPiece };
+          while (true) {
+            const test = { ...ghost, y: ghost.y + 1 };
+            if (!isValid(test)) break;
+            ghost = test;
+          }
+          const gBlocks = getBlocks(ghost);
+          for (const b of gBlocks) {
+            if (b.y >= 0) {
+              ctx.fillStyle = COLORS.ghost;
+              ctx.fillRect(b.x * BLOCK_SIZE + 1, b.y * BLOCK_SIZE + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+              ctx.strokeStyle = COLORS.ghost;
+              ctx.lineWidth = 1;
+              ctx.strokeRect(b.x * BLOCK_SIZE + 3, b.y * BLOCK_SIZE + 3, BLOCK_SIZE - 6, BLOCK_SIZE - 6);
+            }
+          }
+        }
+
+        // Current piece
+        if (currentPiece && !gameOver && !paused) {
+          const blocks = getBlocks(currentPiece);
+          for (const b of blocks) {
+            if (b.y >= 0) {
+              drawBlock(ctx, b.x, b.y, BLOCK_SIZE, currentPiece.color);
+            }
+          }
+        }
+
+        // Cleared rows animation
+        if (clearedRows.length > 0) {
+          ctx.fillStyle = 'rgba(255,255,255,0.15)';
+          for (const r of clearedRows) {
+            ctx.fillRect(0, r * BLOCK_SIZE, canvas.width, BLOCK_SIZE);
+          }
+        }
+
+        // Particles
+        updateAndDrawParticles();
+
+        // Pause overlay
+        if (paused && !modal.classList.contains('active')) {
+          ctx.fillStyle = 'rgba(5, 5, 8, 0.7)';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.font = '700 24px Orbitron, sans-serif';
+          ctx.fillStyle = '#c084fc';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('已暂停', canvas.width / 2, canvas.height / 2);
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'alphabetic';
+        }
+      }
+
+      function drawNext() {
+        const nc = nextCanvas;
+        const nctx = nextCtx;
+        nctx.clearRect(0, 0, nc.width, nc.height);
+        if (!nextPieceKey) return;
+        const def = PIECES[nextPieceKey];
+        const state = def.states[0];
+        const minX = Math.min(...state.map(s => s[0]));
+        const minY = Math.min(...state.map(s => s[1]));
+        const maxX = Math.max(...state.map(s => s[0]));
+        const maxY = Math.max(...state.map(s => s[1]));
+        const w = maxX - minX + 1;
+        const h = maxY - minY + 1;
+        const offsetX = (nc.width - w * NEXT_BLOCK_SIZE) / 2 - minX * NEXT_BLOCK_SIZE;
+        const offsetY = (nc.height - h * NEXT_BLOCK_SIZE) / 2 - minY * NEXT_BLOCK_SIZE;
+
+        for (const [x, y] of state) {
+          const px = offsetX + x * NEXT_BLOCK_SIZE;
+          const py = offsetY + y * NEXT_BLOCK_SIZE;
+          nctx.fillStyle = def.color;
+          nctx.fillRect(px + 1, py + 1, NEXT_BLOCK_SIZE - 2, NEXT_BLOCK_SIZE - 2);
+          nctx.fillStyle = 'rgba(255,255,255,0.15)';
+          nctx.fillRect(px + 1, py + 1, NEXT_BLOCK_SIZE - 2, 3);
+          nctx.fillRect(px + 1, py + 1, 3, NEXT_BLOCK_SIZE - 2);
+          nctx.fillStyle = 'rgba(0,0,0,0.2)';
+          nctx.fillRect(px + 1, py + NEXT_BLOCK_SIZE - 4, NEXT_BLOCK_SIZE - 2, 3);
+          nctx.fillRect(px + NEXT_BLOCK_SIZE - 4, py + 1, 3, NEXT_BLOCK_SIZE - 2);
+        }
+      }
+
+      function updateAndDrawParticles() {
+        particles = particles.filter(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.2;
+          p.life -= 0.04;
+          p.size *= 0.96;
+          if (p.life > 0) {
+            ctx.globalAlpha = p.life;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+          return p.life > 0;
+        });
+      }
+
+      function gameLoop(timestamp) {
+        if (gameOver) return;
+        requestAnimationFrame(gameLoop);
+        draw();
+        if (paused || animating) return;
+
+        const elapsed = timestamp - lastDrop;
+        if (elapsed > dropInterval) {
+          if (!movePiece(0, 1)) {
+            lockTimer += elapsed;
+            if (lockTimer > lockDelay) {
+              lockPiece();
+              lockTimer = 0;
+            }
+          } else {
+            lockTimer = 0;
+          }
+          lastDrop = timestamp;
+        }
+      }
+
+      window.addEventListener('resize', resize);
+      resize();
+      initGame();
+    })();
+  </script>
+</body>
+</html>
